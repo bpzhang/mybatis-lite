@@ -10,6 +10,7 @@ import com.github.mustfun.mybatis.plugin.util.ConnectionHolder;
 import com.github.mustfun.mybatis.plugin.util.DbUtil;
 import com.github.mustfun.mybatis.plugin.util.JavaUtils;
 import com.intellij.openapi.application.WriteAction;
+import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectUtil;
 import com.intellij.openapi.vfs.VfsUtil;
@@ -72,11 +73,11 @@ public class MysqlService {
             dbUtil = new DbUtil(configPo.getDbAddress(), configPo.getDbName(), configPo.getUserName(),
                 configPo.getPassword(), configPo.getPort());
         }
-        return dbUtil.getConnection();
+        return dbUtil.getConnection(project);
     }
 
     public Connection getNewConnection(DbSourcePo dbSourcePo) {
-        ConnectionHolder.remove();
+        ConnectionHolder.getInstance(project).remove();
         return getConnection(dbSourcePo);
     }
 
@@ -203,7 +204,7 @@ public class MysqlService {
 
         engine.init();
         StringResourceRepository repo = (StringResourceRepository) engine
-            .getApplicationAttribute(StringResourceLoader.REPOSITORY_NAME_DEFAULT);
+                .getApplicationAttribute(StringResourceLoader.REPOSITORY_NAME_DEFAULT);
 
         String mainPath = sqlLiteService.queryPluginConfigByKey("mainPath").getValue();
         mainPath = StringUtils.isBlank(mainPath) ? "com.generator" : mainPath;
@@ -231,14 +232,17 @@ public class MysqlService {
         String poFileName = getFileName(VmTypeEnums.MODEL_PO.getCode(), className, maxModelFlag);
         //VirtualFile poFile = JavaUtils.getExistFilePathByName(projectDir, poFileName);
         PsiFile[] poFiles = FilenameIndex.getFilesByName(project, Objects.requireNonNull(poFileName), GlobalSearchScope.allScope(project));
-        String poPackageName = JavaUtils.getFullClassPath(poFiles[0],poFileName);
-
-        fileHashMap.put(VmTypeEnums.MODEL_PO.getCode(),poPackageName);
+        if (poFiles.length > 0) {
+            String poPackageName = JavaUtils.getFullClassPath(poFiles[0], poFileName);
+            fileHashMap.put(VmTypeEnums.MODEL_PO.getCode(), poPackageName);
+        }
         String daoFileName = getFileName(VmTypeEnums.DAO.getCode(), className, maxModelFlag);
         //VirtualFile daoFile = JavaUtils.getExistFilePathByName(projectDir,daoFileName );
         PsiFile[] daoFiles = FilenameIndex.getFilesByName(project, Objects.requireNonNull(daoFileName), GlobalSearchScope.allScope(project));
-        String daoPackageName = JavaUtils.getFullClassPath(daoFiles[0],daoFileName);
-        fileHashMap.put(VmTypeEnums.DAO.getCode(),daoPackageName);
+        if (daoFiles.length>0) {
+            String daoPackageName = JavaUtils.getFullClassPath(daoFiles[0], daoFileName);
+            fileHashMap.put(VmTypeEnums.DAO.getCode(), daoPackageName);
+        }
         //不管怎么样，都得找到po/dao/service/result等路径才行呀=============================
 
         //获取模板列表
